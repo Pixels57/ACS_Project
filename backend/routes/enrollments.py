@@ -1,37 +1,41 @@
-"""
-Enrollment routes
-VULNERABLE: CSRF - No token validation
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from database import get_db
 from models.enrollment import Enrollment, EnrollmentStatus
 from models.course import Course
-from pydantic import BaseModel
-from typing import Optional
+# from pydantic import BaseModel # Not used in vulnerable version
 
 router = APIRouter()
 
-
-class EnrollmentRequest(BaseModel):
-    course_id: int
-    student_id: int
-
+# --- VULNERABLE STATE: No CSRF Check, Accepts Form Data ---
 
 @router.post("")
 async def create_enrollment(
-    course_id: int = Form(...),    # Changed from Pydantic model to Form
-    student_id: int = Form(...),   # Changed from Pydantic model to Form
+    course_id: int = Form(...),    # VULNERABLE: Accepts simple Form Data
+    student_id: int = Form(...),   # VULNERABLE: Accepts simple Form Data
     db: Session = Depends(get_db)
+    # MISSING: No csrf_check dependency here!
 ):
     """
-    VULNERABLE: CSRF
-    Now accepts standard HTML Form data, making it easy to exploit.
+    VULNERABLE ENROLLMENT
+    - App (Frontend) sends Form Data -> WORKS
+    - Attacker (HTML Form) sends Form Data -> WORKS (CSRF)
     """
-    # ... keep your existing logic below (checking course, capacity, etc.) ...
+    # Verify course exists
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Check if already enrolled
+    existing = db.query(Enrollment).filter(
+        Enrollment.course_id == course_id,
+        Enrollment.user_id == student_id
+    ).first()
     
-    # Example logic using the new variables:
+    if existing and existing.status == EnrollmentStatus.ENROLLED:
+         return {"message": "Already enrolled"}
+
+    # Create Enrollment
     enrollment = Enrollment(
         course_id=course_id,
         user_id=student_id,
@@ -46,7 +50,6 @@ async def drop_enrollment(
     enrollment_id: int,
     db: Session = Depends(get_db)
 ):
-    """Drop enrollment"""
     enrollment = db.query(Enrollment).filter(Enrollment.id == enrollment_id).first()
     
     if not enrollment:
@@ -57,28 +60,12 @@ async def drop_enrollment(
     
     return {"message": "Enrollment dropped successfully"}
 
-
 @router.get("")
 async def get_enrollments(
-    user_id: Optional[int] = None,
+    user_id: int = None,
     db: Session = Depends(get_db)
 ):
-    """Get enrollments"""
     query = db.query(Enrollment)
-    
     if user_id:
         query = query.filter(Enrollment.user_id == user_id)
-    
-    enrollments = query.all()
-    
-    return [
-        {
-            "id": e.id,
-            "course_id": e.course_id,
-            "user_id": e.user_id,
-            "status": e.status.value,
-            "timestamp": e.timestamp.isoformat()
-        }
-        for e in enrollments
-    ]
-
+    return query.all()

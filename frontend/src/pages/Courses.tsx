@@ -38,7 +38,7 @@ const Courses = () => {
     }
 
     try {
-      // VULNERABLE: XSS - search query will be reflected unsafely
+      // SECURE: We just send the text. The backend handles the filtering logic.
       const data = await coursesAPI.search(searchQuery)
       setCourses(data)
     } catch (error) {
@@ -67,7 +67,8 @@ const Courses = () => {
         <div className="courses-grid">
           {courses.map((course) => (
             <div key={course.id} className="course-card">
-              <h3>{course.code}</h3>
+              {/* Display code if available */}
+              <h3>{course.code || `CS${course.id}00`}</h3>
               <h4>{course.title}</h4>
               <p>{course.description}</p>
               <div className="course-meta">
@@ -81,10 +82,11 @@ const Courses = () => {
         </div>
       )}
 
-      {/* VULNERABLE: XSS - Search query reflected without sanitization */}
       {searchQuery && (
         <div className="search-results">
-          <h3>Search Results for: <span dangerouslySetInnerHTML={{ __html: searchQuery }} /></h3>
+          {/* SECURE FIX: Removed dangerouslySetInnerHTML */}
+          {/* React will now treat <img...> as the string "<img...>" */}
+          <h3>Search Results for: <span>{searchQuery}</span></h3>
         </div>
       )}
     </div>
@@ -92,4 +94,3 @@ const Courses = () => {
 }
 
 export default Courses
-
