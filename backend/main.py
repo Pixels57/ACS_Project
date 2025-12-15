@@ -3,6 +3,8 @@ Course Registration System - Main Application
 Monolithic FastAPI backend with intentional security vulnerabilities
 """
 
+import asyncio
+import sys
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,6 +16,8 @@ from routes import auth, courses, enrollments, admin, audit
 # Import database setup
 from database import init_db
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 app = FastAPI(
     title="Course Registration System API",
     description="Vulnerable course registration system for security assessment",
