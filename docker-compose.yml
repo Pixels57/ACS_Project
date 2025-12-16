@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    # Build the image using the Dockerfile in the 'backend' folder
+    build: ./backend
+    container_name: acs_backend
+    
+    # Map port 8000 on your PC to port 8000 in the container
+    ports:
+      - "8000:8000"
+    
+    # Sync your local files with the container (Hot Reloading)
+    # This lets you edit code locally and see changes instantly.
+    volumes:
+      - ./backend:/app
+      
+    # Environment variables (Optional)
+    environment:
+      - SECRET_KEY=supersecretkey
+
+    command: bash -c "python reset_db.py && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # --- NEW FRONTEND SECTION ---
+  frontend:
+    build: ./frontend
+    container_name: acs_frontend
+    ports:
+      - "3000:3000"  # Map port 3000 directly
+    volumes:
+      - ./frontend:/app             # Sync your code changes
+      - /app/node_modules           # IMPORTANT: Use container's node_modules, not your local ones
+    environment:
+      # This tells the frontend where the backend is (from the Browser's perspective)
+      - VITE_API_URL=http://backend:8000/api/v1
+      - USE_HTTP=true

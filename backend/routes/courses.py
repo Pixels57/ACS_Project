@@ -22,9 +22,9 @@ class CourseResponse(BaseModel):
     instructor_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
-@router.get("/", response_model=List[CourseResponse])
+@router.get("", response_model=List[CourseResponse])
 async def get_courses(
     filter: Optional[str] = Query(None, description="Filter courses by title"),
     db: Session = Depends(get_db)
