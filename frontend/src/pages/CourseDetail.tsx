@@ -24,14 +24,13 @@ const CourseDetail = () => {
   }, [id]);
 
   const handleEnroll = async () => {
-    // VULNERABLE: CSRF 
-    // This sends a POST request with cookies but no CSRF token.
+    // PROTECTED: CSRF token is automatically included by api.ts interceptor
     if (course && user.id) {
       try {
         await enrollmentsAPI.create(course.id, user.id);
         alert("Enrollment successful!");
-      } catch (err) {
-        alert("Enrollment failed.");
+      } catch (err: any) {
+        alert(`Enrollment failed: ${err.response?.data?.detail || err.message}`);
       }
     }
   };

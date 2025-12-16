@@ -3,23 +3,24 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.enrollment import Enrollment, EnrollmentStatus
 from models.course import Course
-# from pydantic import BaseModel # Not used in vulnerable version
+from typing import Optional
 
 router = APIRouter()
 
-# --- VULNERABLE STATE: No CSRF Check, Accepts Form Data ---
+"""
+Enrollment routes
+PROTECTED: CSRF token validation via middleware
+"""
 
 @router.post("")
 async def create_enrollment(
-    course_id: int = Form(...),    # VULNERABLE: Accepts simple Form Data
-    student_id: int = Form(...),   # VULNERABLE: Accepts simple Form Data
+    course_id: int = Form(...),
+    student_id: int = Form(...),
     db: Session = Depends(get_db)
-    # MISSING: No csrf_check dependency here!
 ):
     """
-    VULNERABLE ENROLLMENT
-    - App (Frontend) sends Form Data -> WORKS
-    - Attacker (HTML Form) sends Form Data -> WORKS (CSRF)
+    Create enrollment
+    Protected by CSRF middleware - requires valid CSRF token in header
     """
     # Verify course exists
     course = db.query(Course).filter(Course.id == course_id).first()
@@ -62,10 +63,24 @@ async def drop_enrollment(
 
 @router.get("")
 async def get_enrollments(
-    user_id: int = None,
+    user_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
+    """Get enrollments"""
     query = db.query(Enrollment)
+    
     if user_id:
         query = query.filter(Enrollment.user_id == user_id)
-    return query.all()
+    
+    enrollments = query.all()
+    
+    return [
+        {
+            "id": e.id,
+            "course_id": e.course_id,
+            "user_id": e.user_id,
+            "status": e.status.value,
+            "timestamp": e.timestamp.isoformat()
+        }
+        for e in enrollments
+    ]

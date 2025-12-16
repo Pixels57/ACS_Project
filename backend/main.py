@@ -13,6 +13,9 @@ import uvicorn
 # Import routes
 from routes import auth, courses, enrollments, admin, audit
 
+# Import CSRF middleware
+from middleware.csrf import CSRFMiddleware, csrf_router
+
 # Import database setup
 from database import init_db
 
@@ -30,10 +33,15 @@ app.add_middleware(
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://localhost:3000", "https://127.0.0.1:3000"],  # VULNERABLE: Allows specific origins (can't use "*" with credentials)
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-CSRF-Token"],  # Allow CSRF token header
 )
 
+# CSRF Protection Middleware
+# Note: Must be added after CORS middleware
+app.add_middleware(CSRFMiddleware)
+
 # Include routers
+app.include_router(csrf_router)  # CSRF token endpoint
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(courses.router, prefix="/api/v1/courses", tags=["Courses"])
 app.include_router(enrollments.router, prefix="/api/v1/enrollments", tags=["Enrollments"])
@@ -88,25 +96,26 @@ if __name__ == "__main__":
             reload=True
         )
     else:
-        # VULNERABLE: HTTPS with misconfigured certificate
-        # Certificate has multiple misconfigurations:
-        # 1. Expired certificate (validity expired 6 months ago)
-        # 2. Wrong Common Name (wrong-domain.example.com instead of localhost)
-        # 3. Self-signed certificate with mismatched issuer
-        # Note: OpenSSL requires minimum 2048-bit keys (weak key size cannot be demonstrated)
-        # Note: Modern crypto libraries require SHA256 (weak algos like SHA1/MD5 not supported)
+        # SECURE: HTTPS with trusted certificate
+        # Certificate is properly configured:
+        # 1. Valid certificate (valid for 1 year)
+        # 2. Correct Common Name (localhost)
+        # 3. Subject Alternative Names (localhost, 127.0.0.1, ::1)
+        # 4. Strong key size (2048-bit RSA)
+        # 5. Secure signature algorithm (SHA256)
         cert_path = os.path.join(os.path.dirname(__file__), "cert.pem")
         key_path = os.path.join(os.path.dirname(__file__), "key.pem")
         
-        # Check if certificates exist, if not, generate them
+        # Check if certificates exist, if not, generate trusted certificate
         if not os.path.exists(cert_path) or not os.path.exists(key_path):
-            print("[!] Certificate files not found. Generating misconfigured certificate...")
-            from generate_misconfigured_cert import generate_misconfigured_cert
-            generate_misconfigured_cert()
+            print("[!] Certificate files not found. Generating trusted certificate...")
+            from generate_trusted_cert import generate_trusted_cert
+            generate_trusted_cert()
         
-        # Run with HTTPS using misconfigured certificate
-        print("[!] VULNERABLE: Running on HTTPS with misconfigured certificate")
-        print("    Certificate is expired, wrong CN, and self-signed")
+        # Run with HTTPS using trusted certificate
+        print("[+] SECURE: Running on HTTPS with trusted certificate")
+        print("    Certificate is valid, correct CN, and properly configured")
+        print("    Note: If browser shows warning, add cert.pem to trusted root CAs")
         print("    For network analysis, use: USE_HTTP=true python main.py")
         print()
         uvicorn.run(

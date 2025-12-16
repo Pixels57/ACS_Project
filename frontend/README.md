@@ -16,11 +16,19 @@ cp .env.example .env
 ```
 
 3. **Run development server:**
-```bash
-npm run dev
-```
+   ```bash
+   # HTTP mode (default)
+   npm run dev
+   # Frontend: http://localhost:3000
+   
+   # HTTPS mode (uses backend certificate)
+   npm run dev:https
+   # Frontend: https://localhost:3000
+   ```
 
-The frontend will be available at `http://localhost:3000`
+The frontend will be available at:
+- **HTTP:** `http://localhost:3000` (when using `npm run dev`)
+- **HTTPS:** `https://localhost:3000` (when using `npm run dev:https`)
 
 ## Security Vulnerabilities
 
